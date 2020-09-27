@@ -9,7 +9,7 @@ class Content:
         self.url = url
     
     def print(self):
-        print(f"Model: {self.model} - Price: {self.price}")
+        print(f"Model: {self.model} - Price: {self.price} - URL: {self.url}")
 
 
 class Website:
@@ -25,8 +25,12 @@ class Website:
 
 
 class Main:
+    def __init__(self):
+        self.load_data()
+
     def getPage(self, url):
-        response = requests.get(url)
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36'}
+        response = requests.get(url, headers=headers)
         if not response.ok:
             print('Server responded:', response.status_code)
         else:
@@ -50,25 +54,33 @@ class Main:
             if bs is None:
                 print("Error.")
                 return
-            model = self.safeGet(bs, site.modelTag)
-            price = self.safeGet(bs, site.priceTag)
+            model = self.safeGet(bs, site.modelTag).strip()
+            price = self.safeGet(bs, site.priceTag).strip()
             if model != "" and price != "":
                 content = Content(model, price, url)
                 content.print()
+    
+    def load_data(self):
+        global models
+        try:
+            try:
+                models = open('./data/camera_models.txt').read().split('\n')
+            except FileNotFoundError:
+                models = open('../data/camera_models.txt').read().split('\n')
+        except FileNotFoundError:
+            return "File not found!"
+            
 
 main = Main()
 
 siteData = [
-['OLX', 'https://www.olx.pl/', 'https://www.olx.pl/oferty/q-', 'div.offer-wrapper', 'h3.margintop5 a', 'True', 'h1', 'div.pricelabel'],
-['Allegro', 'https://allegro.pl/', 'https://allegro.pl/listing?string=', 'div.mpof_ki myre_zn _9c44d_1Hxbq', 'h2.mgn2_14 m9qz_yp mqu1_16 mp4t_0 m3h2_0 mryx_0 munh_0 mp4t_0 m3h2_0 mryx_0 munh_0 a', 'True', 'h1', 'div._1svub _lf05o _9a071_2MEB_']
+['OLX', 'https://www.olx.pl/', 'https://www.olx.pl/oferty/q-', 'div.offer-wrapper', 'h3.margintop5 a', 'True', 'h1', 'div.pricelabel']
 ]
 
 sites = []
 for row in siteData:
-    sites.append(Website(row[0], row[1], row[2],
-                         row[3], row[4], row[5], row[6], row[7]))
+    sites.append(Website(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]))
 
-models = ['Olympus XA', 'Yashica T', 'Konica Big Mini']
 for model in models:
     for targetSite in sites:
         main.search(model, targetSite)
