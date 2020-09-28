@@ -11,7 +11,7 @@ class Content:
         self.url = url
     
     def print(self):
-        print(f"Model: {self.model} - Price: {self.price} - URL: {self.url}\n")
+        print(f"Model: {self.model} - Price: {self.price} - \nURL: {self.url}\n")
 
 
 class Website:
@@ -42,12 +42,14 @@ class Main:
         else:
             return BeautifulSoup(response.text, 'lxml')
 
+
     # Checks whether parsed selector exists, if exists return if not return empty string.
     def safeGet(self, pageObj, selector):
         childObj = pageObj.select(selector)
         if childObj is not None and len(childObj) > 0:
             return childObj[0].get_text()
-        return ''
+        else:
+            return ""
 
     # Specific camera model and site are parsed into search,
     # then are searched for and if model and price variables are
@@ -58,21 +60,24 @@ class Main:
         if site.name == "OLX" and bs.find("div", {"class": "emptynew"}):
             return ""
         else:
-            for result in searchResults:
-                url = result.select(site.resultURL)[0].attrs['href']
-                if (site.absoluteURL):
-                    bs = self.getPage(url)
-                else:
-                    bs = self.getPage(site.url + url)
-                if bs is None:
-                    print("Error.")
-                    return
-                model = self.safeGet(bs, site.modelTag).strip()
-                model_price = self.safeGet(bs, site.priceTag).strip()
-                price, *args = model_price.split(' ') # was getting an error if *args == currency, will re-factor later on.
-                if model != "" and price != "" and int(price) <= camera['max_price']:
-                    content = Content(model, price, url) # splitting price and currency (*args) to parse price as int to set a max price for each product.
-                    content.print()
+            if searchResults:
+                for result in searchResults:
+                    url = result.select(site.resultURL)[0].attrs['href']
+                    if (site.absoluteURL):
+                        bs = self.getPage(url)
+                    else:
+                        bs = self.getPage(site.url + url)
+                    if bs is None:
+                        print("Error.")
+                        return
+                    model = self.safeGet(bs, site.modelTag).strip()
+                    model_price = self.safeGet(bs, site.priceTag).strip()
+                    price, *args = model_price.split(' ') # was getting an error if *args == currency, will re-factor later on.
+                    if model != "" and price != "" and int(price) <= camera['max_price']:
+                        content = Content(model, price, url) # splitting price and currency (*args) to parse price as int to set a max price for each product.
+                        content.print()
+            else:
+                main.monitor_stock(site)
     
     # Load specific camera models from camera_config.json
     def load_data(self):
@@ -86,20 +91,31 @@ class Main:
                     camera_config = json.load(config)
         except FileNotFoundError:
             return "Camera config not found!"
-        
-            
+    
 
-main = Main()
+    def load_site_data(self):
+        siteData = [
+        ['OLX', 'https://www.olx.pl/', 'https://www.olx.pl/oferty/q-', 'div.offer-wrapper', 'h3.margintop5 a', 'True', 'h1', 'div.pricelabel']
+        ]
 
-siteData = [
-['OLX', 'https://www.olx.pl/', 'https://www.olx.pl/oferty/q-', 'div.offer-wrapper', 'h3.margintop5 a', 'True', 'h1', 'div.pricelabel']
-]
+        sites = []
+        for row in siteData:
+            sites.append(Website(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]))
+        main.camera_search(sites)
 
-sites = []
-for row in siteData:
-    sites.append(Website(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]))
 
-for camera in camera_config['cameras']:
-    for model in camera:
-        for targetSite in sites:
-            main.search(camera['model'], targetSite)
+    def camera_search(self, sites):
+        global camera # will delete later - late @ night can't think how to parse fml.
+        for camera in camera_config['cameras']:
+            for targetSite in sites:
+                main.search(camera['model'], targetSite)
+    
+
+    def monitor_stock(self, site):
+        print("No cameras found... Monitoring!")
+
+
+
+if __name__ == '__main__':
+    main = Main()
+    main.load_site_data()
