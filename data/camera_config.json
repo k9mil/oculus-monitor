@@ -1,0 +1,16 @@
+{
+    "cameras":[
+        {
+            "model": "Olympus Trip 35",
+            "max_price": 100
+        },
+        {
+            "model": "Olympus Mju",
+            "max_price": 50
+        },
+        {
+            "model": "Olympus Xa",
+            "max_price": 35
+        }
+    ]
+}

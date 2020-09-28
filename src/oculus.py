@@ -1,4 +1,5 @@
 import requests
+import json
 from bs4 import BeautifulSoup
 
 
@@ -10,7 +11,7 @@ class Content:
         self.url = url
     
     def print(self):
-        print(f"Model: {self.model} - Price: {self.price} - URL: {self.url}")
+        print(f"Model: {self.model} - Price: {self.price} - URL: {self.url}\n")
 
 
 class Website:
@@ -67,21 +68,25 @@ class Main:
                     print("Error.")
                     return
                 model = self.safeGet(bs, site.modelTag).strip()
-                price = self.safeGet(bs, site.priceTag).strip()
-                if model != "" and price != "":
-                    content = Content(model, price, url)
+                model_price = self.safeGet(bs, site.priceTag).strip()
+                price, *args = model_price.split(' ') # was getting an error if *args == currency, will re-factor later on.
+                if model != "" and price != "" and int(price) <= camera['max_price']:
+                    content = Content(model, price, url) # splitting price and currency (*args) to parse price as int to set a max price for each product.
                     content.print()
     
-    # Load specific camera models from data/camera_models.txt
+    # Load specific camera models from camera_config.json
     def load_data(self):
-        global models
+        global camera_config # will remove soon
         try:
             try:
-                models = open('./data/camera_models.txt').read().split('\n')
+                with open('./data/camera_config.json') as config:
+                    camera_config = json.load(config)
             except FileNotFoundError:
-                models = open('../data/camera_models.txt').read().split('\n')
+                with open('../data/camera_config.json') as config:
+                    camera_config = json.load(config)
         except FileNotFoundError:
-            return "File not found!"
+            return "Camera config not found!"
+        
             
 
 main = Main()
@@ -94,6 +99,7 @@ sites = []
 for row in siteData:
     sites.append(Website(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]))
 
-for model in models:
-    for targetSite in sites:
-        main.search(model, targetSite)
+for camera in camera_config['cameras']:
+    for model in camera:
+        for targetSite in sites:
+            main.search(camera['model'], targetSite)
