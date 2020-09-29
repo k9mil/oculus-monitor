@@ -2,7 +2,7 @@
     "cameras":[
         {
             "model": "Olympus Trip 35",
-            "max_price": 100
+            "max_price": 50
         },
         {
             "model": "Olympus Mju",
@@ -10,7 +10,19 @@
         },
         {
             "model": "Olympus Xa",
-            "max_price": 35
+            "max_price": 50
+        },
+        {
+            "model": "Konica Big Mini",
+            "max_price": 50
+        },
+        {
+            "model": "Yashica T",
+            "max_price": 50
+        },
+        {
+            "model": "Contax T",
+            "max_price": 50
         }
     ]
 }
