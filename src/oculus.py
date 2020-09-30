@@ -167,8 +167,6 @@ class Main:
                                     f"Found new {self.camera['model']} at {site.name}\n URL: {self.new_item_url}"
                     
 
-    
-
     # allows the user to select the mode they want to pick, either the scraper or the monitor.
     def select_mode(self):
         self.mode = 0
