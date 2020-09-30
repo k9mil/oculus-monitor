@@ -17,13 +17,12 @@ class Content:
 
 class Website:
     """Contains all necessary variables related to a particular website."""
-    def __init__(self, name, url, searchURL, resultListing, resultURL, absoluteURL, modelTag, priceTag):
+    def __init__(self, name, url, searchURL, resultListing, resultURL, modelTag, priceTag):
         self.name = name
         self.url = url
         self.searchURL = searchURL
         self.resultListing = resultListing
         self.resultURL = resultURL
-        self.absoluteURL = absoluteURL
         self.modelTag = modelTag
         self.priceTag = priceTag
 
@@ -67,10 +66,7 @@ class Main:
         else:
             for result in searchResults:
                 url = result.select(site.resultURL)[0].attrs['href']
-                if (site.absoluteURL):
-                    bs = self.getPage(url)
-                else:
-                    bs = self.getPage(site.url + url)
+                bs = self.getPage(url)
                 if bs is None:
                     return
                 model = self.safeGet(bs, site.modelTag).strip()
@@ -80,52 +76,72 @@ class Main:
                     price, currency = model_price.split('zł')
                 elif site.name == "Allegro":
                     price, *args = model_price.split(',')
-                if model != "" and price != "" and int(price) <= camera['max_price']:
+                if model != "" and price != "" and int(price) <= self.camera['max_price']:
                     content = Content(model, price, url)
                     content.print()
 
     # Load specific camera models from camera_config.json
     def load_data(self):
-        global camera_config # will remove soon
         try:
             try:
                 with open('./data/camera_config.json') as config:
-                    camera_config = json.load(config)
+                    self.camera_config = json.load(config)
             except FileNotFoundError:
                 with open('../data/camera_config.json') as config:
-                    camera_config = json.load(config)
+                    self.camera_config = json.load(config)
         except FileNotFoundError:
             return "Camera config not found!"
     
 
     def load_site_data(self):
         siteData = [
-        ['OLX', 'https://www.olx.pl/', 'https://www.olx.pl/oferty/q-', 'div.offer-wrapper', 'h3.margintop5 a', 'True', 'h1', 'div.pricelabel'],
-        ['Allegro', 'https://allegro.pl/', 'https://allegro.pl/listing?string=', 'div.mpof_ki.mqen_m6.mp7g_oh.mh36_0.mvrt_0.mg9e_8.mj7a_8.m7er_k4', 'h2.mgn2_14.m9qz_yp.mqu1_16.mp4t_0.m3h2_0.mryx_0.munh_0.mp4t_0.m3h2_0.mryx_0.munh_0 a', 'True', 'h1', 'div._1svub._lf05o._9a071_2MEB_']
+        ['OLX', 'https://www.olx.pl/', 'https://www.olx.pl/oferty/q-', 'div.offer-wrapper', 'h3.margintop5 a', 'h1', 'div.pricelabel'],
+        ['Allegro', 'https://allegro.pl/', 'https://allegro.pl/listing?string=', 'div.mpof_ki.mqen_m6.mp7g_oh.mh36_0.mvrt_0.mg9e_8.mj7a_8.m7er_k4', 'h2.mgn2_14.m9qz_yp.mqu1_16.mp4t_0.m3h2_0.mryx_0.munh_0.mp4t_0.m3h2_0.mryx_0.munh_0 a', 'h1', 'div._1svub._lf05o._9a071_2MEB_']
         ]
 
-        sites = []
+        self.sites = []
         for row in siteData:
-            sites.append(Website(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]))
-        main.camera_search(sites)
+            self.sites.append(Website(row[0], row[1], row[2], row[3], row[4], row[5], row[6]))
+        main.camera_search(self.sites)
 
 
     def camera_search(self, sites):
-        global camera # will delete later - late @ night can't think how to parse fml.
-        for camera in camera_config['cameras']:
-            for targetSite in sites:
-                main.search(camera['model'], targetSite)
+        if self.mode == 2:
+            for self.camera in self.camera_config['cameras']:
+                for targetSite in self.sites:
+                    main.search(self.camera['model'], targetSite)
+        elif self.mode == 1:
+            main.monitor_stock()
     
 
-    def monitor_stock(self, site):
-        print("No cameras found... Monitoring!")
-        for camera in camera_config['cameras']:
-            bs = self.getPage(site.searchURL + camera['model'])
-            new_camera_listing = bs.find("h3", {"class": "margintop5"})
-            if new_camera_listing is not None:
-                main.search(camera['model'], site)
+    def monitor_stock(self):
+        print("Monitoring...!")
+        for camera in self.camera_config['cameras']:
+            for site in self.sites:
+                bs = self.getPage(site.searchURL + camera['model'])
+                new_camera_listing = bs.find("h3", {"class": "margintop5"})
+                if new_camera_listing is not None:
+                    main.search(self.camera['model'], site)
+    
+
+    def select_mode(self):
+        self.mode = 0
+        print("1. MONITOR")
+        print("2. FINDER/SCRAPER")
+        while self.mode != 1 or self.mode != 2:
+            user_input = input("Which mode would you like to run?\n")
+            try:
+                self.mode = int(user_input)
+            except ValueError:
+                print("Please input either '1' or '2'.")
+                continue
+            if self.mode == 1:
+                main.load_site_data()
+            elif self.mode == 2:
+                main.load_site_data()
+
 
 
 if __name__ == '__main__':
     main = Main()
-    main.load_site_data()
+    main.select_mode()
