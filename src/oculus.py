@@ -39,8 +39,8 @@ class Main:
         response = requests.get(url, headers=headers)
         if not response.ok:
             if response.status_code == 429:
-                print("Rate limiting (allegro) - waiting 7 seconds...\n")
-                time.sleep(7) # very unpythonic - will think of an alternative soon
+                print("Rate limiting (allegro) - waiting 5 seconds...\n")
+                time.sleep(5) # very unpythonic - will think of an alternative soon
             elif response.status_code != 429:
                 print('Server responded:', response.status_code)
         else:
@@ -121,40 +121,59 @@ class Main:
         print("Monitoring... loading stock...!")
         self.no_of_items = 0
         self.camera_item_dict = {}
+        self.new_item_url = ""
         monitor = True
-        for index, val in enumerate(range(1, 999999)):
+        for index, val in enumerate(range(1, 100000)):
             if index == 0:
                 for self.camera in self.camera_config['cameras']:
                     for site in self.sites:
                         bs = self.getPage(site.searchURL + self.camera['model'])
                         if site.name == "OLX":
-                            key = f"{self.camera['model']} {site.name}"
+                            key = f"{self.camera['model']}, {site.name}"
                             self.no_of_items = bs.find("p", {"class": "color-2"}).text
                             array_of_ints = [s for s in self.no_of_items.split() if s.isdigit()]
                             self.no_of_items = "".join(array_of_ints)
                             self.camera_item_dict[key] = int(self.no_of_items)
                         elif site.name == "Allegro":
-                            key = f"{self.camera['model']} {site.name}"
+                            key = f"{self.camera['model']}, {site.name}"
                             self.no_of_items = bs.find("span", {"class": "_11fdd_39FjG"}).text
                             self.camera_item_dict[key] = self.no_of_items
-                        # new_camera_listing = bs.find("h3", {"class": "margintop5"})
-                        # if new_camera_listing is not None:
-                        #     main.search(self.camera['model'], site)
+                print("\nStock loaded... monitoring for changes!\n")
             else:
-                for key in self.camera_item_dict:
-                    if "Allegro" in key:
-                        key_split_allegro = key.split('Allegro')
-                        print(key_split_allegro)
-                    elif "OLX" in key:
-                        key_split_olx = key.split('OLX')
-                        print(key_split_olx)
+                for i in range(0, 100000):
+                    for self.camera in self.camera_config['cameras']:
+                        for site in self.sites:
+                            for key in self.camera_item_dict:
+                                if site.name in key and self.camera['model'] in key:
+                                    current_stock = self.camera_item_dict[key]
+                            time.sleep(2) # bug with response status code 429 @ allegro - temp sleep (again)
+                            bs = self.getPage(site.searchURL + self.camera['model'])
+                            if site.name == "OLX":
+                                self.no_of_items = bs.find("p", {"class": "color-2"}).text
+                                array_of_ints = [s for s in self.no_of_items.split() if s.isdigit()]
+                                self.no_of_items = "".join(array_of_ints)
+                                if int(self.no_of_items) == int(current_stock):
+                                    pass
+                                elif int(self.no_of_items) != int(current_stock):
+                                    print("Found new {} at {}").format(self.camera['model'], site.name)
+                                    self.new_item_url = (site.searchURL + self.camera['model'] + "?search%5Border%5D=created_at%3Adesc")
+                                    f"Found new {self.camera['model']} at {site.name}\n URL: {self.new_item_url}"
+                            elif site.name == "Allegro":
+                                self.no_of_items = bs.find("span", {"class": "_11fdd_39FjG"}).text
+                                if int(self.no_of_items) == int(current_stock):
+                                    pass
+                                elif int(self.no_of_items) != int(current_stock):
+                                    self.new_item_url = (site.searchURL + self.camera['model'] + "bmatch=baseline-product-cl-eyesa2-engag-dict45-ele-1-2-0717&order=n")
+                                    f"Found new {self.camera['model']} at {site.name}\n URL: {self.new_item_url}"
+                    
+
     
 
     # allows the user to select the mode they want to pick, either the scraper or the monitor.
     def select_mode(self):
         self.mode = 0
         print("1. MONITOR (in progress)")
-        print("2. FINDER/SCRAPER")
+        print("2. FINDER/SCRAPER (in progress)")
         while self.mode != 1 or self.mode != 2:
             user_input = input("Which mode would you like to run?\n")
             try:
