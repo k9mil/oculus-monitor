@@ -93,6 +93,7 @@ class Main:
             return "Camera config not found!"
     
 
+    # Loads site data, declared a site list, appends the sites to the list and then calls camera_search() parsing the sites through.
     def load_site_data(self):
         siteData = [
         ['OLX', 'https://www.olx.pl/', 'https://www.olx.pl/oferty/q-', 'div.offer-wrapper', 'h3.margintop5 a', 'h1', 'div.pricelabel'],
@@ -105,6 +106,7 @@ class Main:
         main.camera_search(self.sites)
 
 
+    # if the mode chosen was equal to 2, it runs the search() function, if the mode was equal to 1, it runs the monitor_stock() function
     def camera_search(self, sites):
         if self.mode == 2:
             for self.camera in self.camera_config['cameras']:
@@ -114,19 +116,44 @@ class Main:
             main.monitor_stock()
     
 
+    # monitors the stock for new additions to the given websites, for the given models.
     def monitor_stock(self):
-        print("Monitoring...!")
-        for camera in self.camera_config['cameras']:
-            for site in self.sites:
-                bs = self.getPage(site.searchURL + camera['model'])
-                new_camera_listing = bs.find("h3", {"class": "margintop5"})
-                if new_camera_listing is not None:
-                    main.search(self.camera['model'], site)
+        print("Monitoring... loading stock...!")
+        self.no_of_items = 0
+        self.camera_item_dict = {}
+        monitor = True
+        for index, val in enumerate(range(1, 999999)):
+            if index == 0:
+                for self.camera in self.camera_config['cameras']:
+                    for site in self.sites:
+                        bs = self.getPage(site.searchURL + self.camera['model'])
+                        if site.name == "OLX":
+                            key = f"{self.camera['model']} {site.name}"
+                            self.no_of_items = bs.find("p", {"class": "color-2"}).text
+                            array_of_ints = [s for s in self.no_of_items.split() if s.isdigit()]
+                            self.no_of_items = "".join(array_of_ints)
+                            self.camera_item_dict[key] = int(self.no_of_items)
+                        elif site.name == "Allegro":
+                            key = f"{self.camera['model']} {site.name}"
+                            self.no_of_items = bs.find("span", {"class": "_11fdd_39FjG"}).text
+                            self.camera_item_dict[key] = self.no_of_items
+                        # new_camera_listing = bs.find("h3", {"class": "margintop5"})
+                        # if new_camera_listing is not None:
+                        #     main.search(self.camera['model'], site)
+            else:
+                for key in self.camera_item_dict:
+                    if "Allegro" in key:
+                        key_split_allegro = key.split('Allegro')
+                        print(key_split_allegro)
+                    elif "OLX" in key:
+                        key_split_olx = key.split('OLX')
+                        print(key_split_olx)
     
 
+    # allows the user to select the mode they want to pick, either the scraper or the monitor.
     def select_mode(self):
         self.mode = 0
-        print("1. MONITOR")
+        print("1. MONITOR (in progress)")
         print("2. FINDER/SCRAPER")
         while self.mode != 1 or self.mode != 2:
             user_input = input("Which mode would you like to run?\n")
@@ -135,9 +162,7 @@ class Main:
             except ValueError:
                 print("Please input either '1' or '2'.")
                 continue
-            if self.mode == 1:
-                main.load_site_data()
-            elif self.mode == 2:
+            if self.mode == 1 or self.mode == 2:
                 main.load_site_data()
 
 
