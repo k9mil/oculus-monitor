@@ -1,6 +1,7 @@
 import requests
 import json
 import time
+import oculus_discord
 from bs4 import BeautifulSoup
 
 
@@ -96,7 +97,7 @@ class Main:
     # Loads site data, declared a site list, appends the sites to the list and then calls camera_search() parsing the sites through.
     def load_site_data(self):
         siteData = [
-        ['OLX', 'https://www.olx.pl/', 'https://www.olx.pl/oferty/q-', 'div.offer-wrapper', 'h3.margintop5 a', 'h1', 'div.pricelabel'],
+        ['OLX', 'https://www.olx.pl/', 'https://www.olx.pl/oferty/q-', 'div.offer-wrapper', 'h3.margintop5 a.detailsLink', 'h1', 'div.pricelabel'],
         ['Allegro', 'https://allegro.pl/', 'https://allegro.pl/listing?string=', 'div.mpof_ki.mqen_m6.mp7g_oh.mh36_0.mvrt_0.mg9e_8.mj7a_8.m7er_k4', 'h2.mgn2_14.m9qz_yp.mqu1_16.mp4t_0.m3h2_0.mryx_0.munh_0.mp4t_0.m3h2_0.mryx_0.munh_0 a', 'h1', 'div._1svub._lf05o._9a071_2MEB_']
         ]
 
@@ -118,10 +119,12 @@ class Main:
 
     # monitors the stock for new additions to the given websites, for the given models.
     def monitor_stock(self):
-        print("Monitoring... loading stock...!")
+        print("\n\nMonitoring... loading stock...!")
         self.no_of_items = 0
         self.camera_item_dict = {}
         self.new_item_url = ""
+        current_time = time.localtime()
+        self.time = time.strftime("%H:%M:%S", current_time)
         monitor = True
         for index, val in enumerate(range(1, 100000)):
             if index == 0:
@@ -140,32 +143,44 @@ class Main:
                             self.camera_item_dict[key] = self.no_of_items
                 print("\nStock loaded... monitoring for changes!\n")
             else:
-                for i in range(0, 100000):
-                    for self.camera in self.camera_config['cameras']:
-                        for site in self.sites:
-                            for key in self.camera_item_dict:
-                                if site.name in key and self.camera['model'] in key:
-                                    current_stock = self.camera_item_dict[key]
-                            time.sleep(2) # bug with response status code 429 @ allegro - temp sleep (again)
-                            bs = self.getPage(site.searchURL + self.camera['model'])
-                            if site.name == "OLX":
-                                self.no_of_items = bs.find("p", {"class": "color-2"}).text
-                                array_of_ints = [s for s in self.no_of_items.split() if s.isdigit()]
-                                self.no_of_items = "".join(array_of_ints)
-                                if int(self.no_of_items) == int(current_stock):
-                                    pass
-                                elif int(self.no_of_items) != int(current_stock):
-                                    print("Found new {} at {}").format(self.camera['model'], site.name)
-                                    self.new_item_url = (site.searchURL + self.camera['model'] + "?search%5Border%5D=created_at%3Adesc")
-                                    f"Found new {self.camera['model']} at {site.name}\n URL: {self.new_item_url}"
-                            elif site.name == "Allegro":
-                                self.no_of_items = bs.find("span", {"class": "_11fdd_39FjG"}).text
-                                if int(self.no_of_items) == int(current_stock):
-                                    pass
-                                elif int(self.no_of_items) != int(current_stock):
-                                    self.new_item_url = (site.searchURL + self.camera['model'] + "bmatch=baseline-product-cl-eyesa2-engag-dict45-ele-1-2-0717&order=n")
-                                    f"Found new {self.camera['model']} at {site.name}\n URL: {self.new_item_url}"
-                    
+                try:
+                    for i in range(0, 100000):
+                        for self.camera in self.camera_config['cameras']:
+                            for site in self.sites:
+                                for key in self.camera_item_dict:
+                                    if site.name in key and self.camera['model'] in key:
+                                        old_stock = self.camera_item_dict[key]
+                                time.sleep(2) # bug with response status code 429 @ allegro - temp sleep (again)
+                                bs = self.getPage(site.searchURL + self.camera['model'])
+                                if site.name == "OLX":
+                                    self.no_of_items = bs.find("p", {"class": "color-2"}).text
+                                    array_of_ints = [s for s in self.no_of_items.split() if s.isdigit()]
+                                    self.no_of_items = "".join(array_of_ints)
+                                    if int(self.no_of_items) == int(old_stock):
+                                        pass
+                                    elif int(self.no_of_items) > int(old_stock):
+                                        self.new_item_url = (site.searchURL + self.camera['model'] + "?search%5Border%5D=created_at%3Adesc")
+                                        print(f"Found new {self.camera['model']}, {site.name} at {self.time}\nURL: {self.new_item_url}")
+                                        main.monitor_stock()
+                                    elif int(self.no_of_items) < int(old_stock): 
+                                        print("Stock count has been altered (bought/deleted items), restarting...\n")
+                                        main.monitor_stock()
+                                elif site.name == "Allegro":
+                                    self.no_of_items = bs.find("span", {"class": "_11fdd_39FjG"}).text
+                                    self.no_of_items = self.no_of_items.replace(' ', '')
+                                    old_stock = old_stock.replace(' ', '')
+                                    if int(self.no_of_items) == int(old_stock):
+                                        pass
+                                    elif int(self.no_of_items) > int(old_stock):
+                                        self.new_item_url = (site.searchURL + self.camera['model'] + "&bmatch=baseline-product-cl-eyesa2-engag-dict45-ele-1-2-0717&order=n")
+                                        print(f"Found new {self.camera['model']}, {site.name} at {self.time}\nURL: {self.new_item_url}")
+                                        main.monitor_stock()
+                                    elif int(self.no_of_items) < int(old_stock):
+                                        print("Stock count has been altered (bought/deleted items), restarting...\n")
+                                        main.monitor_stock()
+                except:
+                    print("An error has occurred, restarting...\n")
+                    main.monitor_stock()
 
     # allows the user to select the mode they want to pick, either the scraper or the monitor.
     def select_mode(self):

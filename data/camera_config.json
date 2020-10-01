@@ -1,7 +1,7 @@
 {
     "cameras":[
         {
-            "model": "Olympus Trip 35",
+            "model": "Olympus Trip",
             "max_price": 750
         },
         {
@@ -10,6 +10,10 @@
         },
         {
             "model": "Olympus Xa",
+            "max_price": 750
+        },
+        {
+            "model": "Olympus",
             "max_price": 750
         },
         {
@@ -22,6 +26,22 @@
         },
         {
             "model": "Contax T",
+            "max_price": 750
+        },
+        {
+            "model": "Leica Minilux",
+            "max_price": 750
+        },
+        {
+            "model": "Pentax PC",
+            "max_price": 750
+        },
+        {
+            "model": "Zenit",
+            "max_price": 750
+        },
+        {
+            "model": "Pentax K1000",
             "max_price": 750
         }
     ]
