@@ -1,8 +1,8 @@
 import requests
 import json
 import time
-import oculus_discord
 from bs4 import BeautifulSoup
+from dhooks import Webhook, Embed
 
 
 class Content:
@@ -42,6 +42,7 @@ class Main:
             if response.status_code == 429:
                 print("Rate limiting (allegro) - waiting 5 seconds...\n")
                 time.sleep(5) # very unpythonic - will think of an alternative soon
+                return BeautifulSoup(response.text, 'lxml')
             elif response.status_code != 429:
                 print('Server responded:', response.status_code)
         else:
@@ -97,8 +98,8 @@ class Main:
     # Loads site data, declared a site list, appends the sites to the list and then calls camera_search() parsing the sites through.
     def load_site_data(self):
         siteData = [
-        ['OLX', 'https://www.olx.pl/', 'https://www.olx.pl/oferty/q-', 'div.offer-wrapper', 'h3.margintop5 a.detailsLink', 'h1', 'div.pricelabel'],
-        ['Allegro', 'https://allegro.pl/', 'https://allegro.pl/listing?string=', 'div.mpof_ki.mqen_m6.mp7g_oh.mh36_0.mvrt_0.mg9e_8.mj7a_8.m7er_k4', 'h2.mgn2_14.m9qz_yp.mqu1_16.mp4t_0.m3h2_0.mryx_0.munh_0.mp4t_0.m3h2_0.mryx_0.munh_0 a', 'h1', 'div._1svub._lf05o._9a071_2MEB_']
+        ['OLX', 'https://www.olx.pl/', 'https://www.olx.pl/elektronika/fotografia/q-', 'div.offer-wrapper', 'h3.margintop5 a', 'h1', 'div.pricelabel'],
+        ['Allegro', 'https://allegro.pl/', 'https://allegro.pl/kategoria/fotografia?string=', 'div.mpof_ki.mqen_m6.mp7g_oh.mh36_0.mvrt_0.mg9e_8.mj7a_8.m7er_k4', 'h2.mgn2_14.m9qz_yp.mqu1_16.mp4t_0.m3h2_0.mryx_0.munh_0.mp4t_0.m3h2_0.mryx_0.munh_0 a', 'h1', 'div._1svub._lf05o._9a071_2MEB_']
         ]
 
         self.sites = []
@@ -131,16 +132,23 @@ class Main:
                 for self.camera in self.camera_config['cameras']:
                     for site in self.sites:
                         bs = self.getPage(site.searchURL + self.camera['model'])
-                        if site.name == "OLX":
-                            key = f"{self.camera['model']}, {site.name}"
-                            self.no_of_items = bs.find("p", {"class": "color-2"}).text
-                            array_of_ints = [s for s in self.no_of_items.split() if s.isdigit()]
-                            self.no_of_items = "".join(array_of_ints)
-                            self.camera_item_dict[key] = int(self.no_of_items)
-                        elif site.name == "Allegro":
-                            key = f"{self.camera['model']}, {site.name}"
-                            self.no_of_items = bs.find("span", {"class": "_11fdd_39FjG"}).text
-                            self.camera_item_dict[key] = self.no_of_items
+                        try:
+                            if site.name == "OLX":
+                                key = f"{self.camera['model']}, {site.name}"
+                                try:
+                                    self.no_of_items = bs.find("p", {"class": "color-2"}).text
+                                except:
+                                    self.no_of_items = "Znaleziono 0 ogłoszeń"
+                                array_of_ints = [s for s in self.no_of_items.split() if s.isdigit()]
+                                self.no_of_items = "".join(array_of_ints)
+                                self.camera_item_dict[key] = int(self.no_of_items)
+                            elif site.name == "Allegro":
+                                key = f"{self.camera['model']}, {site.name}"
+                                self.no_of_items = bs.find("span", {"class": "_11fdd_39FjG"}).text
+                                self.camera_item_dict[key] = self.no_of_items
+                        except:
+                            print("An error has occurred when loading stock... Restarting...\n")
+                            main.monitor_stock()
                 print("\nStock loaded... monitoring for changes!\n")
             else:
                 try:
@@ -150,37 +158,112 @@ class Main:
                                 for key in self.camera_item_dict:
                                     if site.name in key and self.camera['model'] in key:
                                         old_stock = self.camera_item_dict[key]
-                                time.sleep(2) # bug with response status code 429 @ allegro - temp sleep (again)
+                                self.promoted = True
+                                time.sleep(1) # bug with response status code 429 @ allegro - temp sleep (again)
                                 bs = self.getPage(site.searchURL + self.camera['model'])
                                 if site.name == "OLX":
-                                    self.no_of_items = bs.find("p", {"class": "color-2"}).text
+                                    bs = self.getPage(site.searchURL + self.camera['model'] + "?search%5Border%5D=created_at%3Adesc")
+                                    try:
+                                        self.no_of_items = bs.find("p", {"class": "color-2"}).text
+                                    except: 
+                                        self.no_of_items = "Znaleziono 0 ogłoszeń"
                                     array_of_ints = [s for s in self.no_of_items.split() if s.isdigit()]
                                     self.no_of_items = "".join(array_of_ints)
                                     if int(self.no_of_items) == int(old_stock):
                                         pass
                                     elif int(self.no_of_items) > int(old_stock):
-                                        self.new_item_url = (site.searchURL + self.camera['model'] + "?search%5Border%5D=created_at%3Adesc")
-                                        print(f"Found new {self.camera['model']}, {site.name} at {self.time}\nURL: {self.new_item_url}")
-                                        main.monitor_stock()
+                                        searchResults = bs.select(site.resultListing)
+                                        while self.promoted:
+                                            for result in searchResults:
+                                                url = result.select(site.resultURL)[0].attrs['href']
+                                                if ";promoted" not in url:
+                                                    self.promoted = False
+                                                    break
+                                                else:
+                                                    pass
+                                        bs = self.getPage(url)
+                                        model_price = self.safeGet(bs, site.priceTag).strip()
+                                        model_price = model_price.replace(' ', '')
+                                        price, currency = model_price.split('zł')
+                                        if int(price) <= self.camera['max_price']:
+                                            print(f"Found new {self.camera['model']}, {site.name} at {self.time}\nURL: {url}, Price: {price}")
+                                            main.webhook_embed(self.camera['model'], site, url)
+                                            main.monitor_stock()
+                                        else:
+                                            print(f"Found product over the price limit at {site.name}... Restarting\n")
+                                            main.monitor_stock()
                                     elif int(self.no_of_items) < int(old_stock): 
                                         print("Stock count has been altered (bought/deleted items), restarting...\n")
                                         main.monitor_stock()
                                 elif site.name == "Allegro":
+                                    bs = self.getPage(site.searchURL + self.camera['model'] + "&bmatch=baseline-product-cl-eyesa2-engag-dict45-ele-1-2-0717&order=n")
                                     self.no_of_items = bs.find("span", {"class": "_11fdd_39FjG"}).text
                                     self.no_of_items = self.no_of_items.replace(' ', '')
                                     old_stock = old_stock.replace(' ', '')
                                     if int(self.no_of_items) == int(old_stock):
                                         pass
                                     elif int(self.no_of_items) > int(old_stock):
-                                        self.new_item_url = (site.searchURL + self.camera['model'] + "&bmatch=baseline-product-cl-eyesa2-engag-dict45-ele-1-2-0717&order=n")
-                                        print(f"Found new {self.camera['model']}, {site.name} at {self.time}\nURL: {self.new_item_url}")
+
+                                        section_obj_allegro = bs.find("section", {"class": "_9c44d_3pyzl"})
+                                        header_non_promoted = bs.find("h2", string="Oferty")
+                                        header_promoted = bs.find("h2", string="Oferty promowane")
+                                        after_header_product_list = []
+                                        ind_of_header = 0
+
+                                        if header_promoted:
+                                            for ind, all_obj in enumerate(section_obj_allegro):
+                                                if all_obj == header_non_promoted:
+                                                    ind_of_header = ind + 1
+                                                    print(ind_of_header)
+                                                    break
+                                                else:
+                                                    continue
+                                            for ind, all_obj in enumerate(section_obj_allegro):
+                                                if ind <= ind_of_header:
+                                                    pass
+                                                else:
+                                                    after_header_product_list.append(all_obj)
+                                        else:
+                                            for all_obj in section_obj_allegro:
+                                                after_header_product_list.append(all_obj)
+                                            ind_of_header = 0
+
+                                        print(after_header_product_list)
+                                        while self.promoted:
+                                            for result in after_header_product_list:
+                                                url = result.select("div div div h2 a")[0].attrs['href']
+                                                if "/events/" not in url:
+                                                    self.promoted = False
+                                                    break
+                                                elif "/events/" in url:
+                                                    pass
+                                        bs = self.getPage(url)
+                                        model_price = self.safeGet(bs, site.priceTag).strip()
+                                        model_price = model_price.replace(' ', '')
+                                        price, *args = model_price.split(',')
+                                        print(f"Found new {self.camera['model']}, {site.name} at {self.time}\nURL: {url}, PRICE: {price}")
+                                        main.webhook_embed(self.camera['model'], site, url)
                                         main.monitor_stock()
                                     elif int(self.no_of_items) < int(old_stock):
                                         print("Stock count has been altered (bought/deleted items), restarting...\n")
                                         main.monitor_stock()
                 except:
-                    print("An error has occurred, restarting...\n")
+                    print("A fatal error has occurred - Restarting...\n")
                     main.monitor_stock()
+
+    def webhook_embed(self, camera, site, url):
+        hook = Webhook("#")
+
+        embed = Embed(
+            description=':joy:',
+            color=0x5CDBF0,
+            timestamp='now')
+
+        embed.set_author(name=f"Found new {self.camera['model']} at {site.name}")
+        embed.add_field(name='URL', value=f"{url}")
+        embed.set_footer(text='POWERED BY OCULUSHOOK')
+
+        hook.send(embed=embed)
 
     # allows the user to select the mode they want to pick, either the scraper or the monitor.
     def select_mode(self):
