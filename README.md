@@ -31,8 +31,7 @@ There are two modes for Oculus.
 
 ## Oculus Demo
 
-<p align="center"><img src="https://thumbs.gfycat.com/FlippantAggressiveBordercollie-mobile.mp4"></p>
-<p align="center"><img src="https://thumbs.gfycat.com/BigSnarlingBalloonfish-mobile.mp4"></p>
+<p align="center"><img src="https://thumbs.gfycat.com/ArcticAngelicCats-small.gif"></p>
 
 ## License
 
