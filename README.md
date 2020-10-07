@@ -21,6 +21,8 @@ As for now, [Python](https://www.python.org/) is **necessary** for you to be abl
 2. In the command line, enter "pip install -r requirements.txt" (if that doesn't work, try pip3 instead of pip)
 3. Run the file via "python oculus.py" (once again, try python3 if python does not work!)
 
+After you confirmed that the file is working, you can tweak the settings inside the **camera_config.json** file, provided in the repo. As well as that, if you wish to receive notifications from the Monitor mode, you have to change the Discord Webhook to your desired webhook.
+
 ## Modes
 
 There are two modes for Oculus.
