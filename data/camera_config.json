@@ -13,10 +13,6 @@
             "max_price": 750
         },
         {
-            "model": "Olympus",
-            "max_price": 750
-        },
-        {
             "model": "Konica Big Mini",
             "max_price": 750
         },
@@ -30,10 +26,6 @@
         },
         {
             "model": "Pentax PC",
-            "max_price": 750
-        },
-        {
-            "model": "Zenit",
             "max_price": 750
         },
         {
