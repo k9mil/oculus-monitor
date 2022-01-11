@@ -1,8 +1,10 @@
-# Oculus ✨
+# Oculus 👁️
 
-Oculus is an open source, scraper/monitor for multiple polish-based websites, searching for analog cameras under a certain price range however it can be easily tweaked to search for any product. It was created with the sole intention of learning, however I will be keeping it maintained in case given websites under-go some changes.
+Oculus is an open source, scraper/monitor for multiple polish-based websites, searching for analog cameras under a certain price range however it can be easily tweaked to search for any product.
 
-## Features 💫
+This project is currently unmaintained, therefore, I cannot guarantee it works as intended.
+
+## Features
 
 - Camera config (Models, Max Price) for user's required input.
 - Supports two websites being: OLX and Allegro.
@@ -10,7 +12,7 @@ Oculus is an open source, scraper/monitor for multiple polish-based websites, se
 - Ignores sponsored and promoted items on both websites.
 - Discord Webhook integration for notifications.
 
-## Working on 🦛
+## Working on
 - Fixing bugs
 - Improving Finder/Scraper functionality
 
